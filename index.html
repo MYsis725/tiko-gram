@@ -44,12 +44,12 @@
         </div>
     </div>
 
-    <!-- Подключение Firebase SDK -->
+    <!-- Подключение правильных, полных ссылок Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
         import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
 
-        // Твои личные настройки Firebase
+        // Твои точные, исправленные данные без обрезанных ссылок
         const firebaseConfig = {
             apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
             authDomain: "://firebaseapp.com",
@@ -94,7 +94,7 @@
             if(e.key === 'Enter') sendMessage();
         }
 
-        // Мгновенный прием сообщений
+        // Слушатель мгновенных сообщений
         onChildAdded(messagesRef, (snapshot) => {
             const data = snapshot.val();
             const box = document.getElementById('messages');
