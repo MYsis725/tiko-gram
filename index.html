@@ -21,6 +21,10 @@
         button:hover { background: #008f72; }
         .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; }
     </style>
+
+    <!-- Подключаем Firebase классическим надежным способом -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
 </head>
 <body>
 
@@ -28,7 +32,7 @@
     <div id="setup" class="setup-screen">
         <h2>Добро пожаловать в Tiko Gram</h2>
         <p style="color: #8696a0;">Введите ваш никнейм для чата:</p>
-        <input type="text" id="username-input" placeholder="Например, Харьков_Макс" style="max-width: 300px; text-align: center;">
+        <input type="text" id="username-input" placeholder="Например, Харьков_Макс">
         <button onclick="startChat()">Войти в чат</button>
     </div>
 
@@ -44,13 +48,9 @@
         </div>
     </div>
 
-    <!-- Подключение правильных, полных ссылок Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://gstatic.com";
-        import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
-
-        // Твои точные, исправленные данные без обрезанных ссылок
-        const firebaseConfig = {
+    <script>
+        // Твои точные настройки базы данных
+        var firebaseConfig = {
             apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
             authDomain: "://firebaseapp.com",
             databaseURL: "https://firebaseio.com",
@@ -60,28 +60,28 @@
             appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
         };
 
-        // Инициализация
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const messagesRef = ref(db, 'messages');
+        // Инициализация базы данных
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.database();
+        var messagesRef = db.ref('messages');
 
-        let currentUsername = "";
+        var currentUsername = "";
 
-        // Логика входа
-        window.startChat = function() {
-            const input = document.getElementById('username-input');
-            if(input.value.trim() !== "") {
+        // Функция входа
+        function startChat() {
+            var input = document.getElementById('username-input');
+            if (input.value.trim() !== "") {
                 currentUsername = input.value.trim();
                 document.getElementById('setup').style.display = 'none';
             }
         }
 
-        // Отправка сообщения
-        window.sendMessage = function() {
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            if(text !== "") {
-                push(messagesRef, {
+        // Функция отправки сообщений
+        function sendMessage() {
+            var input = document.getElementById('msg-input');
+            var text = input.value.trim();
+            if (text !== "") {
+                messagesRef.push({
                     username: currentUsername,
                     message: text,
                     timestamp: Date.now()
@@ -90,20 +90,20 @@
             }
         }
 
-        window.handleKey = function(e) {
-            if(e.key === 'Enter') sendMessage();
+        function handleKey(e) {
+            if (e.key === 'Enter') sendMessage();
         }
 
-        // Слушатель мгновенных сообщений
-        onChildAdded(messagesRef, (snapshot) => {
-            const data = snapshot.val();
-            const box = document.getElementById('messages');
+        // Функция мгновенного приема сообщений
+        messagesRef.on('child_added', function(snapshot) {
+            var data = snapshot.val();
+            var box = document.getElementById('messages');
             
-            const msgDiv = document.createElement('div');
-            const isMe = data.username === currentUsername;
+            var msgDiv = document.createElement('div');
+            var isMe = data.username === currentUsername;
             
             msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
-            msgDiv.innerHTML = `<div class="username">${data.username}</div><div>${data.message}</div>`;
+            msgDiv.innerHTML = '<div class="username">' + data.username + '</div><div>' + data.message + '</div>';
             
             box.appendChild(msgDiv);
             box.scrollTop = box.scrollHeight;
