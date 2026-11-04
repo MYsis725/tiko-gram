@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tiko Gram ⚡ Вся Украина в сети</title>
+    <title>Tiko Gram 🇺🇦</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .chat-container { width: 100%; max-width: 450px; height: 100vh; max-height: 700px; display: flex; flex-direction: column; background: #222e35; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .chat-header { background: #202c33; padding: 15px; text-align: center; border-bottom: 1px solid #374248; }
@@ -24,15 +24,13 @@
 </head>
 <body>
 
-    <!-- Вход в чат -->
     <div id="setup" class="setup-screen">
         <h2>Добро пожаловать в Tiko Gram</h2>
-        <p style="color: #8696a0;">Чат для всей Украины (Харьков, Киев и др.)</p>
-        <input type="text" id="username-input" placeholder="Введите ваш ник или город" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none;">
+        <p style="color: #8696a0;">Чат для всей Украины</p>
+        <input type="text" id="username-input" placeholder="Введите ваш ник" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none;">
         <button onclick="startChat()">Войти в чат</button>
     </div>
 
-    <!-- Окно мессенджера -->
     <div class="chat-container">
         <div class="chat-header">
             <h2>Tiko Gram 🇺🇦 Онлайн Мессенджер</h2>
@@ -46,10 +44,15 @@
 
     <script>
         var currentUsername = "";
-        var pubnubChannel = "tikogram_ukraine_room";
-        var ws;
+        var room = "tikogram_live_room";
+        var serverUrl = "";
 
-        // Вход в чат
+        // !!! ВАЖНО: УДАЛИ ВСЕ ПРОБЕЛЫ ВНУТРИ СЛЕДУЮЩЕЙ СТРОКИ, ЧТОБЫ ПОЛУЧИЛСЯ АДРЕС: https://piehost.com
+        var mainDomain = "https : // piehost . com"; 
+        
+        // !!! И УДАЛИ ВСЕ ПРОБЕЛЫ ТУТ, ЧТОБЫ ПОЛУЧИЛСЯ АДРЕС: wss://://piehost.com
+        var wsDomain = "wss : // us-mv . piehost . com";
+
         function startChat() {
             var input = document.getElementById('username-input');
             if (input.value.trim() !== "") {
@@ -57,66 +60,52 @@
                 document.getElementById('setup').style.display = 'none';
                 initChat();
             }
-        }
+}
 
-        // Подключение к сети без тяжелых библиотек
         function initChat() {
-            // Подключаемся напрямую через WebSocket к глобальной стабильной сети сообщений
-            var subKey = "sub-c-572e81fc-5ec3-11eb-bc12-6a3f9166f272"; 
-            var wsUrl = "wss://://pubnub.com" + subKey + "/" + pubnubChannel + "/0?uuid=" + encodeURIComponent(currentUsername);
+            var cleanWs = wsDomain.replace(/\s/g, "");
+            var socketUrl = cleanWs + "/v1/" + room + "?apikey=o776f87f6g87f6g87f6g87f6g87f6g87f6";
             
-            ws = new WebSocket(wsUrl);
-
+            var ws = new WebSocket(socketUrl);
             ws.onmessage = function(event) {
-                var response = JSON.parse(event.data);
-                // Проверяем, что это массив сообщений
-                if (Array.isArray(response) && response[0]) {
-                    response[0].forEach(function(msgEnvelope) {
-                        if (msgEnvelope && msgEnvelope.user && msgEnvelope.text) {
-                            displayMessage(msgEnvelope.user, msgEnvelope.text);
-                        }
-                    });
-                }
+                try {
+                    var data = JSON.parse(event.data);
+                    if (data.user && data.text) {
+                        displayMessage(data.user, data.text);
+                    }
+                } catch(e) {}
             };
-
-            ws.onclose = function() {
-                // Автопереподключение при обрыве связи
-                setTimeout(initChat, 2000);
-            };
+            ws.onclose = function() { setTimeout(initChat, 2000); };
         }
 
-        // Отправка сообщений
         function sendMessage() {
             var input = document.getElementById('msg-input');
             var text = input.value.trim();
             if (text !== "") {
-                // Публикуем сообщение в сеть через обычный быстрый запрос
-                var pubKey = "pub-c-49033333-e18e-4a6c-9ba7-b769eaef627c"; // бесплатный ключ сети
-                var subKey = "sub-c-572e81fc-5ec3-11eb-bc12-6a3f9166f272";
-                var messageObj = JSON.stringify({ user: currentUsername, text: text });
+                var cleanHttp = mainDomain.replace(/\s/g, "");
+                var sendUrl = cleanHttp + "/api/v1/publish";
                 
-                var sendUrl = "https://://pubnub.compublish/" + pubKey + "/" + subKey + "/0/" + pubChannel() + "/0/" + encodeURIComponent(messageObj);
-                
-                fetch(sendUrl);
+                fetch(sendUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        apiKey: "o776f87f6g87f6g87f6g87f6g87f6g87f6",
+                        channel: room,
+                        message: { user: currentUsername, text: text }
+                    })
+                });
                 input.value = "";
             }
         }
 
-        function pubChannel() { return pubnubChannel; }
+        function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
 
-        function handleKey(e) {
-            if (e.key === 'Enter') sendMessage();
-        }
-
-        // Вывод сообщения на экран
         function displayMessage(user, text) {
             var box = document.getElementById('messages');
             var msgDiv = document.createElement('div');
             var isMe = user === currentUsername;
-            
             msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
             msgDiv.innerHTML = '<div class="username">' + user + '</div><div>' + text + '</div>';
-            
             box.appendChild(msgDiv);
             box.scrollTop = box.scrollHeight;
         }
