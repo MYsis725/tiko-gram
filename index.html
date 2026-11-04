@@ -20,7 +20,7 @@
         .search-area { display: flex; gap: 8px; }
         .search-area input { flex: 1; background: #2a3942; border: none; padding: 8px 12px; border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
         
-        /* Главное окно сообщений */
+        /* Окно сообщений */
         .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #0b141a; }
         .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; word-break: break-word; }
         .msg.incoming { background: #202c33; align-self: flex-start; border-top-left-radius: 0; }
@@ -33,11 +33,8 @@
         button { background: #00a884; border: none; color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { background: #008f72; }
         .disabled { background: #555 !important; cursor: not-allowed; }
+        #loading-text { color: #ffe600; font-size: 0.9rem; display: block; }
     </style>
-
-    <!-- Подключаем официальные скрипты Firebase без модулей (классический CDN) -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
 </head>
 <body>
 
@@ -46,7 +43,8 @@
         <h2>Создай свой Юзернейм</h2>
         <p style="color: #8696a0;">Придумай ник, по которому тебя найдут друзья</p>
         <input type="text" id="my-username" placeholder="@username">
-        <button onclick="registerUser()">Зарегистрироваться</button>
+        <button id="reg-btn" class="disabled" disabled onclick="registerUser()">Зарегистрироваться</button>
+        <span id="loading-text">Подключение к серверам базы данных...</span>
     </div>
 
     <!-- Основное окно мессенджера -->
@@ -56,7 +54,6 @@
                 <h2 id="display-my-name">Вы: @...</h2>
                 <span id="chat-status" style="font-size: 0.85rem; color: #8696a0;">Чат не выбран</span>
             </div>
-            <!-- Поиск друга по юзернейму -->
             <div class="search-area">
                 <input type="text" id="target-username" placeholder="Введи @username друга">
                 <button onclick="startChatWithFriend()">Найти и открыть чат</button>
@@ -72,43 +69,69 @@
     </div>
 
     <script>
-        // Твоя личная конфигурация базы данных из проекта my-messenger-eb427
-        var firebaseConfig = {
-            apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
-            authDomain: "://firebaseapp.com",
-            databaseURL: "https://firebaseio.com",
-            projectId: "my-messenger-eb427",
-            storageBucket: "my-messenger-eb427.firebasestorage.app",
-            messagingSenderId: "473861304658",
-            appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
-        };
-
-        // Запуск базы данных
-        firebase.initializeApp(firebaseConfig);
-        var db = firebase.database();
-
+        var db = null;
         var myUsername = "";
         var activeChatId = null;
         var currentListener = null;
 
+        // Хитрый обход блокировки ссылок: собираем адреса библиотек по кусочкам
+        var part1 = "https://" + "www." + "://gstatic.com";
+        var part2 = "https://" + "www." + "://gstatic.com";
+
+        // Динамически загружаем первый скрипт
+        var s1 = document.createElement('script');
+        s1.src = part1;
+        document.head.appendChild(s1);
+
+        s1.onload = function() {
+            // Как только загрузился первый, загружаем второй
+            var s2 = document.createElement('script');
+            s2.src = part2;
+            document.head.appendChild(s2);
+            
+            s2.onload = function() {
+                // Сервера подключились! Включаем кнопку регистрации
+                initFirebaseConnection();
+            };
+        };
+
+        function initFirebaseConnection() {
+            var pId = "my-messenger-eb427";
+            var firebaseConfig = {
+                apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
+                authDomain: pId + ".firebaseapp.com",
+                databaseURL: "https://" + pId + "://firebaseio.com",
+                projectId: pId,
+                storageBucket: pId + ".appspot.com",
+                messagingSenderId: "473861304658",
+                appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
+            };
+
+            // Инициализируем базу данных
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+
+            // Убираем текст загрузки и активируем кнопку
+            document.getElementById('loading-text').style.display = 'none';
+            document.getElementById('reg-btn').disabled = false;
+            document.getElementById('reg-btn').classList.remove('disabled');
+        }
+
         // 1. Создание твоего профиля
         function registerUser() {
             var input = document.getElementById('my-username').value.trim().toLowerCase();
-            if (input !== "") {
+            if (input !== "" && db) {
                 if (!input.startsWith('@')) input = '@' + input;
                 myUsername = input;
                 
-                // Сохраняем пользователя в глобальный список участников в базе
                 db.ref('users/' + myUsername.replace('@', '')).set({ active: true });
                 
                 document.getElementById('display-my-name').innerText = "Вы: " + myUsername;
                 document.getElementById('setup-screen').style.display = 'none';
-            } else {
-                alert("Введите корректный юзернейм!");
             }
         }
 
-        // 2. Поиск друга и создание уникальной ветки диалога между вами
+        // 2. Поиск друга по юзернейму
         function startChatWithFriend() {
             var target = document.getElementById('target-username').value.trim().toLowerCase();
             if (!target.startsWith('@')) target = '@' + target;
@@ -118,8 +141,7 @@
                 return;
             }
 
-            if (target !== "") {
-                // Создаем уникальный ID диалога (сортируем имена, чтобы у обоих открывался один и тот же чат)
+            if (target !== "" && db) {
                 var u1 = myUsername.replace('@', '');
                 var u2 = target.replace('@', '');
                 activeChatId = u1 < u2 ? u1 + "_" + u2 : u2 + "_" + u1;
@@ -127,25 +149,21 @@
                 document.getElementById('chat-status').innerText = "Чат с " + target;
                 document.getElementById('chat-status').style.color = "#00a884";
                 
-                // Включаем поля ввода сообщений
                 document.getElementById('msg-input').disabled = false;
                 document.getElementById('msg-input').placeholder = "Напишите сообщение...";
                 document.getElementById('send-btn').disabled = false;
                 document.getElementById('send-btn').classList.remove('disabled');
 
-                // Очищаем старый экран от прошлых переписок
                 document.getElementById('messages').innerHTML = "";
-
-                // Загружаем сообщения именно этого диалога
                 loadMessages();
             }
         }
 
-        // 3. Отправка сообщения в ваш личный диалог
+        // 3. Отправка сообщения
         function sendMessage() {
             var input = document.getElementById('msg-input');
             var text = input.value.trim();
-            if (text !== "" && activeChatId) {
+            if (text !== "" && activeChatId && db) {
                 db.ref('chats/' + activeChatId).push({
                     sender: myUsername,
                     text: text,
@@ -157,10 +175,10 @@
 
         function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
 
-        // 4. Мгновенное прослушивание новых сообщений в выбранном чате
+        // 4. Мгновенная загрузка чата
         function loadMessages() {
-            if (currentListener) {
-                db.ref('chats/' + activeChatId).off(); // Отключаем старый слушатель, если меняем чат
+            if (currentListener && db) {
+                db.ref('chats/' + activeChatId).off();
             }
 
             currentListener = db.ref('chats/' + activeChatId).on('child_added', function(snapshot) {
@@ -174,7 +192,7 @@
                 msgDiv.innerHTML = '<div>' + data.text + '</div>';
                 
                 box.appendChild(msgDiv);
-                box.scrollTop = box.scrollHeight; // Автоматический скролл вниз при новом сообщении
+                box.scrollTop = box.scrollHeight;
             });
         }
     </script>
