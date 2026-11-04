@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiko Gram ⚡ Миттєвий Чат</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 450px; height: 100vh; max-height: 700px; display: flex; flex-direction: column; background: #222e35; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .chat-header { background: #202c33; padding: 15px; text-align: center; border-bottom: 1px solid #374248; }
+        .chat-header h2 { font-size: 1.2rem; color: #00a884; }
+        .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #0b141a; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; word-break: break-word; position: relative; }
+        .msg.incoming { background: #202c33; align-self: flex-start; border-top-left-radius: 0; }
+        .msg.outgoing { background: #005c4b; align-self: flex-end; border-top-right-radius: 0; }
+        .msg .username { font-size: 0.75rem; color: #00a884; font-weight: bold; margin-bottom: 3px; }
+        .chat-input-area { background: #202c33; padding: 10px; display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { flex: 1; background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; }
+        button { background: #00a884; border: none; color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #008f72; }
+        .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; }
+    </style>
+</head>
+<body>
+
+    <!-- Екран введення імені -->
+    <div id="setup" class="setup-screen">
+        <h2>Ласкаво просимо до Tiko Gram</h2>
+        <p style="color: #8696a0;">Введіть ваш нікнейм для чату:</p>
+        <input type="text" id="username-input" placeholder="Наприклад, Харків_Макс" style="max-width: 300px; text-align: center;">
+        <button onclick="startChat()">Увійти в чат</button>
+    </div>
+
+    <!-- Вікно чату -->
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Tiko Gram (Київ ⚡ Харків)</h2>
+        </div>
+        <div class="messages-box" id="messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="msg-input" placeholder="Напишіть повідомлення..." onkeypress="handleKey(event)">
+            <button onclick="sendMessage()">Надіслати</button>
+        </div>
+    </div>
+
+    <!-- Підключення Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
+
+        // Твої особисті ключі Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
+            authDomain: "my-messenger-eb427.firebaseapp.com",
+            databaseURL: "https://firebaseio.com",
+            projectId: "my-messenger-eb427",
+            storageBucket: "my-messenger-eb427.firebasestorage.app",
+            messagingSenderId: "473861304658",
+            appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
+        };
+
+        // Ініціалізація
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const messagesRef = ref(db, 'messages');
+
+        let currentUsername = "";
+
+        // Логіка входу
+        window.startChat = function() {
+            const input = document.getElementById('username-input');
+            if(input.value.trim() !== "") {
+                currentUsername = input.value.trim();
+                document.getElementById('setup').style.display = 'none';
+            }
+        }
+
+        // Відправка повідомлення
+        window.sendMessage = function() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if(text !== "") {
+                push(messagesRef, {
+                    username: currentUsername,
+                    message: text,
+                    timestamp: Date.now()
+                });
+                input.value = "";
+            }
+        }
+
+        window.handleKey = function(e) {
+            if(e.key === 'Enter') sendMessage();
+        }
+
+        // Миттєвий прийом повідомлень
+        onChildAdded(messagesRef, (snapshot) => {
+            const data = snapshot.val();
+            const box = document.getElementById('messages');
+            
+            const msgDiv = document.createElement('div');
+            const isMe = data.username === currentUsername;
+            
+            msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
+            msgDiv.innerHTML = `<div class="username">${data.username}</div><div>${data.message}</div>`;
+            
+            box.appendChild(msgDiv);
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
+</body>
+</html>
