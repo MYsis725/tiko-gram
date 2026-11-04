@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tiko Gram ⚡ Мгновенный Чат</title>
+    <title>Tiko Gram ⚡ Вся Украина в сети</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -11,7 +11,7 @@
         .chat-header { background: #202c33; padding: 15px; text-align: center; border-bottom: 1px solid #374248; }
         .chat-header h2 { font-size: 1.2rem; color: #00a884; }
         .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #0b141a; }
-        .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; word-break: break-word; position: relative; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; word-break: break-word; }
         .msg.incoming { background: #202c33; align-self: flex-start; border-top-left-radius: 0; }
         .msg.outgoing { background: #005c4b; align-self: flex-end; border-top-right-radius: 0; }
         .msg .username { font-size: 0.75rem; color: #00a884; font-weight: bold; margin-bottom: 3px; }
@@ -21,25 +21,21 @@
         button:hover { background: #008f72; }
         .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; }
     </style>
-
-    <!-- Подключаем Firebase классическим надежным способом -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
 </head>
 <body>
 
-    <!-- Экран ввода имени -->
+    <!-- Вход в чат -->
     <div id="setup" class="setup-screen">
         <h2>Добро пожаловать в Tiko Gram</h2>
-        <p style="color: #8696a0;">Введите ваш никнейм для чата:</p>
-        <input type="text" id="username-input" placeholder="Например, Харьков_Макс">
+        <p style="color: #8696a0;">Чат для всей Украины (Харьков, Киев и др.)</p>
+        <input type="text" id="username-input" placeholder="Введите ваш ник или город" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none;">
         <button onclick="startChat()">Войти в чат</button>
     </div>
 
-    <!-- Окно чата -->
+    <!-- Окно мессенджера -->
     <div class="chat-container">
         <div class="chat-header">
-            <h2>Tiko Gram (Киев ⚡ Харьков)</h2>
+            <h2>Tiko Gram 🇺🇦 Онлайн Мессенджер</h2>
         </div>
         <div class="messages-box" id="messages"></div>
         <div class="chat-input-area">
@@ -49,65 +45,81 @@
     </div>
 
     <script>
-        // Твои точные настройки базы данных
-        var firebaseConfig = {
-            apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
-            authDomain: "://firebaseapp.com",
-            databaseURL: "https://firebaseio.com",
-            projectId: "my-messenger-eb427",
-            storageBucket: "my-messenger-eb427.firebasestorage.app",
-            messagingSenderId: "473861304658",
-            appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
-        };
-
-        // Инициализация базы данных
-        firebase.initializeApp(firebaseConfig);
-        var db = firebase.database();
-        var messagesRef = db.ref('messages');
-
         var currentUsername = "";
+        var pubnubChannel = "tikogram_ukraine_room";
+        var ws;
 
-        // Функция входа
+        // Вход в чат
         function startChat() {
             var input = document.getElementById('username-input');
             if (input.value.trim() !== "") {
                 currentUsername = input.value.trim();
                 document.getElementById('setup').style.display = 'none';
+                initChat();
             }
         }
 
-        // Функция отправки сообщений
+        // Подключение к сети без тяжелых библиотек
+        function initChat() {
+            // Подключаемся напрямую через WebSocket к глобальной стабильной сети сообщений
+            var subKey = "sub-c-572e81fc-5ec3-11eb-bc12-6a3f9166f272"; 
+            var wsUrl = "wss://://pubnub.com" + subKey + "/" + pubnubChannel + "/0?uuid=" + encodeURIComponent(currentUsername);
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onmessage = function(event) {
+                var response = JSON.parse(event.data);
+                // Проверяем, что это массив сообщений
+                if (Array.isArray(response) && response[0]) {
+                    response[0].forEach(function(msgEnvelope) {
+                        if (msgEnvelope && msgEnvelope.user && msgEnvelope.text) {
+                            displayMessage(msgEnvelope.user, msgEnvelope.text);
+                        }
+                    });
+                }
+            };
+
+            ws.onclose = function() {
+                // Автопереподключение при обрыве связи
+                setTimeout(initChat, 2000);
+            };
+        }
+
+        // Отправка сообщений
         function sendMessage() {
             var input = document.getElementById('msg-input');
             var text = input.value.trim();
             if (text !== "") {
-                messagesRef.push({
-                    username: currentUsername,
-                    message: text,
-                    timestamp: Date.now()
-                });
+                // Публикуем сообщение в сеть через обычный быстрый запрос
+                var pubKey = "pub-c-49033333-e18e-4a6c-9ba7-b769eaef627c"; // бесплатный ключ сети
+                var subKey = "sub-c-572e81fc-5ec3-11eb-bc12-6a3f9166f272";
+                var messageObj = JSON.stringify({ user: currentUsername, text: text });
+                
+                var sendUrl = "https://://pubnub.compublish/" + pubKey + "/" + subKey + "/0/" + pubChannel() + "/0/" + encodeURIComponent(messageObj);
+                
+                fetch(sendUrl);
                 input.value = "";
             }
         }
+
+        function pubChannel() { return pubnubChannel; }
 
         function handleKey(e) {
             if (e.key === 'Enter') sendMessage();
         }
 
-        // Функция мгновенного приема сообщений
-        messagesRef.on('child_added', function(snapshot) {
-            var data = snapshot.val();
+        // Вывод сообщения на экран
+        function displayMessage(user, text) {
             var box = document.getElementById('messages');
-            
             var msgDiv = document.createElement('div');
-            var isMe = data.username === currentUsername;
+            var isMe = user === currentUsername;
             
             msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
-            msgDiv.innerHTML = '<div class="username">' + data.username + '</div><div>' + data.message + '</div>';
+            msgDiv.innerHTML = '<div class="username">' + user + '</div><div>' + text + '</div>';
             
             box.appendChild(msgDiv);
             box.scrollTop = box.scrollHeight;
-        });
+        }
     </script>
 </body>
 </html>
