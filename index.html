@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tiko Gram 🇺🇦</title>
+    <title>Tiko Gram 🇺🇦 Мгновенный P2P Чат</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -19,21 +19,32 @@
         input[type="text"] { flex: 1; background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; }
         button { background: #00a884; border: none; color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { background: #008f72; }
-        .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; }
+        .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; text-align: center; padding: 20px; }
+        .code-box { background: #2a3942; padding: 10px; border-radius: 8px; font-weight: bold; color: #00a884; margin: 10px 0; font-size: 1.2rem; }
     </style>
+    <!-- Подключаем надежную P2P библиотеку через официальный архив cdnjs -->
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
+    <!-- Экран подключения -->
     <div id="setup" class="setup-screen">
         <h2>Добро пожаловать в Tiko Gram</h2>
-        <p style="color: #8696a0;">Чат для всей Украины</p>
-        <input type="text" id="username-input" placeholder="Введите ваш ник" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none;">
-        <button onclick="startChat()">Войти в чат</button>
+        <p style="color: #8696a0;">Ваш личный секретный код для связи:</p>
+        <div class="code-box" id="my-id-display">Генерация кода...</div>
+        
+        <input type="text" id="username-input" placeholder="Введите ваш ник (например, Макс)" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none; margin-bottom: 10px; width: 260px;"><br>
+        
+        <p style="color: #8696a0;">Чтобы подключиться к другу, введите ЕГО код:</p>
+        <input type="text" id="peer-id-input" placeholder="Код друга из другого города" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none; width: 260px;"><br>
+        
+        <button onclick="startChat()">Запустить чат</button>
     </div>
 
+    <!-- Окно мессенджера -->
     <div class="chat-container">
         <div class="chat-header">
-            <h2>Tiko Gram 🇺🇦 Онлайн Мессенджер</h2>
+            <h2>Tiko Gram 🇺🇦 Прямой P2P Канал</h2>
         </div>
         <div class="messages-box" id="messages"></div>
         <div class="chat-input-area">
@@ -43,67 +54,63 @@
     </div>
 
     <script>
-        var currentUsername = "";
-        var room = "tikogram_live_room";
-        var serverUrl = "";
+        var peer = new Peer(); // Создаем прямое P2P подключение
+        var conn = null;
+        var myName = "Пользователь";
 
-        // !!! ВАЖНО: УДАЛИ ВСЕ ПРОБЕЛЫ ВНУТРИ СЛЕДУЮЩЕЙ СТРОКИ, ЧТОБЫ ПОЛУЧИЛСЯ АДРЕС: https://piehost.com
-        var mainDomain = "https : // piehost . com"; 
-        
-        // !!! И УДАЛИ ВСЕ ПРОБЕЛЫ ТУТ, ЧТОБЫ ПОЛУЧИЛСЯ АДРЕС: wss://://piehost.com
-        var wsDomain = "wss : // us-mv . piehost . com";
+        // Показываем твой личный уникальный код, как только он сгенерируется
+        peer.on('open', function(id) {
+            document.getElementById('my-id-display').innerText = id;
+        });
+
+        // Слушаем, если кто-то другой вводит наш код и подключается к нам
+        peer.on('connection', function(incomingConn) {
+            conn = incomingConn;
+            setupConnection();
+            document.getElementById('setup').style.display = 'none';
+        });
 
         function startChat() {
-            var input = document.getElementById('username-input');
-            if (input.value.trim() !== "") {
-                currentUsername = input.value.trim();
-                document.getElementById('setup').style.display = 'none';
-                initChat();
-            }
-}
+            var nameInput = document.getElementById('username-input').value.trim();
+            if (nameInput !== "") myName = nameInput;
 
-        function initChat() {
-            var cleanWs = wsDomain.replace(/\s/g, "");
-            var socketUrl = cleanWs + "/v1/" + room + "?apikey=o776f87f6g87f6g87f6g87f6g87f6g87f6";
+            var peerId = document.getElementById('peer-id-input').value.trim();
             
-            var ws = new WebSocket(socketUrl);
-            ws.onmessage = function(event) {
-                try {
-                    var data = JSON.parse(event.data);
-                    if (data.user && data.text) {
-                        displayMessage(data.user, data.text);
-                    }
-                } catch(e) {}
-            };
-            ws.onclose = function() { setTimeout(initChat, 2000); };
+            if (peerId !== "") {
+                // Если мы сами ввели код друга — подключаемся к нему напрямую
+                conn = peer.connect(peerId);
+                setupConnection();
+                document.getElementById('setup').style.display = 'none';
+            } else {
+                alert("Если к вам подключаются — просто ждите. Если вы подключаетесь — введите код друга в нижнее поле!");
+            }
+        }
+
+        function setupConnection() {
+            // Когда соединение установлено, слушаем сообщения
+            conn.on('data', function(data) {
+                if (data.user && data.text) {
+                    displayMessage(data.user, data.text, false);
+                }
+            });
         }
 
         function sendMessage() {
             var input = document.getElementById('msg-input');
             var text = input.value.trim();
-            if (text !== "") {
-                var cleanHttp = mainDomain.replace(/\s/g, "");
-                var sendUrl = cleanHttp + "/api/v1/publish";
-                
-                fetch(sendUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        apiKey: "o776f87f6g87f6g87f6g87f6g87f6g87f6",
-                        channel: room,
-                        message: { user: currentUsername, text: text }
-                    })
-                });
+            if (text !== "" && conn) {
+                // Отправляем пакет данных напрямую в браузер друга
+                conn.send({ user: myName, text: text });
+                displayMessage(myName, text, true);
                 input.value = "";
             }
         }
 
         function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
 
-        function displayMessage(user, text) {
+        function displayMessage(user, text, isMe) {
             var box = document.getElementById('messages');
             var msgDiv = document.createElement('div');
-            var isMe = user === currentUsername;
             msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
             msgDiv.innerHTML = '<div class="username">' + user + '</div><div>' + text + '</div>';
             box.appendChild(msgDiv);
