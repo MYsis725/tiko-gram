@@ -3,118 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tiko Gram 🇺🇦 Мгновенный P2P Чат</title>
+    <title>Tiko Gram 🇺🇦</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .chat-container { width: 100%; max-width: 450px; height: 100vh; max-height: 700px; display: flex; flex-direction: column; background: #222e35; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        .chat-header { background: #202c33; padding: 15px; text-align: center; border-bottom: 1px solid #374248; }
-        .chat-header h2 { font-size: 1.2rem; color: #00a884; }
+        
+        /* Экран входа */
+        .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; text-align: center; }
+        .setup-screen input { background: #2a3942; border: none; padding: 14px; border-radius: 8px; color: #fff; text-align: center; outline: none; width: 280px; font-size: 1rem; }
+        
+        /* Шапка чата */
+        .chat-header { background: #202c33; padding: 12px 15px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #374248; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .chat-header h2 { font-size: 1.1rem; color: #00a884; }
+        .search-area { display: flex; gap: 8px; }
+        .search-area input { flex: 1; background: #2a3942; border: none; padding: 8px 12px; border-radius: 6px; color: #fff; font-size: 0.9rem; outline: none; }
+        
+        /* Главное окно сообщений */
         .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #0b141a; }
         .msg { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; word-break: break-word; }
         .msg.incoming { background: #202c33; align-self: flex-start; border-top-left-radius: 0; }
         .msg.outgoing { background: #005c4b; align-self: flex-end; border-top-right-radius: 0; }
-        .msg .username { font-size: 0.75rem; color: #00a884; font-weight: bold; margin-bottom: 3px; }
+        
+        /* Поле ввода */
         .chat-input-area { background: #202c33; padding: 10px; display: flex; gap: 10px; align-items: center; }
-        input[type="text"] { flex: 1; background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; }
+        .chat-input-area input { flex: 1; background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; }
+        
         button { background: #00a884; border: none; color: #fff; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { background: #008f72; }
-        .setup-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #0b141a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 15px; text-align: center; padding: 20px; }
-        .code-box { background: #2a3942; padding: 10px; border-radius: 8px; font-weight: bold; color: #00a884; margin: 10px 0; font-size: 1.2rem; }
+        .disabled { background: #555 !important; cursor: not-allowed; }
     </style>
-    <!-- Подключаем надежную P2P библиотеку через официальный архив cdnjs -->
-    <script src="https://cloudflare.com"></script>
+
+    <!-- Подключаем официальные скрипты Firebase без модулей (классический CDN) -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
 </head>
 <body>
 
-    <!-- Экран подключения -->
-    <div id="setup" class="setup-screen">
-        <h2>Добро пожаловать в Tiko Gram</h2>
-        <p style="color: #8696a0;">Ваш личный секретный код для связи:</p>
-        <div class="code-box" id="my-id-display">Генерация кода...</div>
-        
-        <input type="text" id="username-input" placeholder="Введите ваш ник (например, Макс)" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none; margin-bottom: 10px; width: 260px;"><br>
-        
-        <p style="color: #8696a0;">Чтобы подключиться к другу, введите ЕГО код:</p>
-        <input type="text" id="peer-id-input" placeholder="Код друга из другого города" style="background: #2a3942; border: none; padding: 12px; border-radius: 8px; color: #fff; text-align: center; outline: none; width: 260px;"><br>
-        
-        <button onclick="startChat()">Запустить чат</button>
+    <!-- Экран регистрации Юзернейма -->
+    <div id="setup-screen" class="setup-screen">
+        <h2>Создай свой Юзернейм</h2>
+        <p style="color: #8696a0;">Придумай ник, по которому тебя найдут друзья</p>
+        <input type="text" id="my-username" placeholder="@username">
+        <button onclick="registerUser()">Зарегистрироваться</button>
     </div>
 
-    <!-- Окно мессенджера -->
+    <!-- Основное окно мессенджера -->
     <div class="chat-container">
         <div class="chat-header">
-            <h2>Tiko Gram 🇺🇦 Прямой P2P Канал</h2>
+            <div class="header-top">
+                <h2 id="display-my-name">Вы: @...</h2>
+                <span id="chat-status" style="font-size: 0.85rem; color: #8696a0;">Чат не выбран</span>
+            </div>
+            <!-- Поиск друга по юзернейму -->
+            <div class="search-area">
+                <input type="text" id="target-username" placeholder="Введи @username друга">
+                <button onclick="startChatWithFriend()">Найти и открыть чат</button>
+            </div>
         </div>
+        
         <div class="messages-box" id="messages"></div>
+        
         <div class="chat-input-area">
-            <input type="text" id="msg-input" placeholder="Напишите сообщение..." onkeypress="handleKey(event)">
-            <button onclick="sendMessage()">Отправить</button>
+            <input type="text" id="msg-input" placeholder="Выберите чат..." disabled onkeypress="handleKey(event)">
+            <button id="send-btn" class="disabled" disabled onclick="sendMessage()">Отправить</button>
         </div>
     </div>
 
     <script>
-        var peer = new Peer(); // Создаем прямое P2P подключение
-        var conn = null;
-        var myName = "Пользователь";
+        // Твоя личная конфигурация базы данных из проекта my-messenger-eb427
+        var firebaseConfig = {
+            apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
+            authDomain: "://firebaseapp.com",
+            databaseURL: "https://firebaseio.com",
+            projectId: "my-messenger-eb427",
+            storageBucket: "my-messenger-eb427.firebasestorage.app",
+            messagingSenderId: "473861304658",
+            appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
+        };
 
-        // Показываем твой личный уникальный код, как только он сгенерируется
-        peer.on('open', function(id) {
-            document.getElementById('my-id-display').innerText = id;
-        });
+        // Запуск базы данных
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.database();
 
-        // Слушаем, если кто-то другой вводит наш код и подключается к нам
-        peer.on('connection', function(incomingConn) {
-            conn = incomingConn;
-            setupConnection();
-            document.getElementById('setup').style.display = 'none';
-        });
+        var myUsername = "";
+        var activeChatId = null;
+        var currentListener = null;
 
-        function startChat() {
-            var nameInput = document.getElementById('username-input').value.trim();
-            if (nameInput !== "") myName = nameInput;
-
-            var peerId = document.getElementById('peer-id-input').value.trim();
-            
-            if (peerId !== "") {
-                // Если мы сами ввели код друга — подключаемся к нему напрямую
-                conn = peer.connect(peerId);
-                setupConnection();
-                document.getElementById('setup').style.display = 'none';
+        // 1. Создание твоего профиля
+        function registerUser() {
+            var input = document.getElementById('my-username').value.trim().toLowerCase();
+            if (input !== "") {
+                if (!input.startsWith('@')) input = '@' + input;
+                myUsername = input;
+                
+                // Сохраняем пользователя в глобальный список участников в базе
+                db.ref('users/' + myUsername.replace('@', '')).set({ active: true });
+                
+                document.getElementById('display-my-name').innerText = "Вы: " + myUsername;
+                document.getElementById('setup-screen').style.display = 'none';
             } else {
-                alert("Если к вам подключаются — просто ждите. Если вы подключаетесь — введите код друга в нижнее поле!");
+                alert("Введите корректный юзернейм!");
             }
         }
 
-        function setupConnection() {
-            // Когда соединение установлено, слушаем сообщения
-            conn.on('data', function(data) {
-                if (data.user && data.text) {
-                    displayMessage(data.user, data.text, false);
-                }
-            });
+        // 2. Поиск друга и создание уникальной ветки диалога между вами
+        function startChatWithFriend() {
+            var target = document.getElementById('target-username').value.trim().toLowerCase();
+            if (!target.startsWith('@')) target = '@' + target;
+
+            if (target === myUsername) {
+                alert("Нельзя писать самому себе!");
+                return;
+            }
+
+            if (target !== "") {
+                // Создаем уникальный ID диалога (сортируем имена, чтобы у обоих открывался один и тот же чат)
+                var u1 = myUsername.replace('@', '');
+                var u2 = target.replace('@', '');
+                activeChatId = u1 < u2 ? u1 + "_" + u2 : u2 + "_" + u1;
+
+                document.getElementById('chat-status').innerText = "Чат с " + target;
+                document.getElementById('chat-status').style.color = "#00a884";
+                
+                // Включаем поля ввода сообщений
+                document.getElementById('msg-input').disabled = false;
+                document.getElementById('msg-input').placeholder = "Напишите сообщение...";
+                document.getElementById('send-btn').disabled = false;
+                document.getElementById('send-btn').classList.remove('disabled');
+
+                // Очищаем старый экран от прошлых переписок
+                document.getElementById('messages').innerHTML = "";
+
+                // Загружаем сообщения именно этого диалога
+                loadMessages();
+            }
         }
 
+        // 3. Отправка сообщения в ваш личный диалог
         function sendMessage() {
             var input = document.getElementById('msg-input');
             var text = input.value.trim();
-            if (text !== "" && conn) {
-                // Отправляем пакет данных напрямую в браузер друга
-                conn.send({ user: myName, text: text });
-                displayMessage(myName, text, true);
+            if (text !== "" && activeChatId) {
+                db.ref('chats/' + activeChatId).push({
+                    sender: myUsername,
+                    text: text,
+                    timestamp: Date.now()
+                });
                 input.value = "";
             }
         }
 
         function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
 
-        function displayMessage(user, text, isMe) {
-            var box = document.getElementById('messages');
-            var msgDiv = document.createElement('div');
-            msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
-            msgDiv.innerHTML = '<div class="username">' + user + '</div><div>' + text + '</div>';
-            box.appendChild(msgDiv);
-            box.scrollTop = box.scrollHeight;
+        // 4. Мгновенное прослушивание новых сообщений в выбранном чате
+        function loadMessages() {
+            if (currentListener) {
+                db.ref('chats/' + activeChatId).off(); // Отключаем старый слушатель, если меняем чат
+            }
+
+            currentListener = db.ref('chats/' + activeChatId).on('child_added', function(snapshot) {
+                var data = snapshot.val();
+                var box = document.getElementById('messages');
+                
+                var msgDiv = document.createElement('div');
+                var isMe = data.sender === myUsername;
+                
+                msgDiv.classList.add('msg', isMe ? 'outgoing' : 'incoming');
+                msgDiv.innerHTML = '<div>' + data.text + '</div>';
+                
+                box.appendChild(msgDiv);
+                box.scrollTop = box.scrollHeight; // Автоматический скролл вниз при новом сообщении
+            });
         }
     </script>
 </body>
