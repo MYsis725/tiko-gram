@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tiko Gram ⚡ Миттєвий Чат</title>
+    <title>Tiko Gram ⚡ Мгновенный Чат</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #0b141a; color: #e9edef; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -24,35 +24,35 @@
 </head>
 <body>
 
-    <!-- Екран введення імені -->
+    <!-- Экран ввода имени -->
     <div id="setup" class="setup-screen">
-        <h2>Ласкаво просимо до Tiko Gram</h2>
-        <p style="color: #8696a0;">Введіть ваш нікнейм для чату:</p>
-        <input type="text" id="username-input" placeholder="Наприклад, Харків_Макс" style="max-width: 300px; text-align: center;">
-        <button onclick="startChat()">Увійти в чат</button>
+        <h2>Добро пожаловать в Tiko Gram</h2>
+        <p style="color: #8696a0;">Введите ваш никнейм для чата:</p>
+        <input type="text" id="username-input" placeholder="Например, Харьков_Макс" style="max-width: 300px; text-align: center;">
+        <button onclick="startChat()">Войти в чат</button>
     </div>
 
-    <!-- Вікно чату -->
+    <!-- Окно чата -->
     <div class="chat-container">
         <div class="chat-header">
-            <h2>Tiko Gram (Київ ⚡ Харків)</h2>
+            <h2>Tiko Gram (Киев ⚡ Харьков)</h2>
         </div>
         <div class="messages-box" id="messages"></div>
         <div class="chat-input-area">
-            <input type="text" id="msg-input" placeholder="Напишіть повідомлення..." onkeypress="handleKey(event)">
-            <button onclick="sendMessage()">Надіслати</button>
+            <input type="text" id="msg-input" placeholder="Напишите сообщение..." onkeypress="handleKey(event)">
+            <button onclick="sendMessage()">Отправить</button>
         </div>
     </div>
 
-    <!-- Підключення Firebase SDK -->
+    <!-- Подключение Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
         import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
 
-        // Твої особисті ключі Firebase
+        // Твои личные настройки Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAEhA60vtU8SDDwWerSk0NeBoJ2xbTQDp8",
-            authDomain: "my-messenger-eb427.firebaseapp.com",
+            authDomain: "://firebaseapp.com",
             databaseURL: "https://firebaseio.com",
             projectId: "my-messenger-eb427",
             storageBucket: "my-messenger-eb427.firebasestorage.app",
@@ -60,14 +60,14 @@
             appId: "1:473861304658:web:f81aaa4ba11111f5d18a8b"
         };
 
-        // Ініціалізація
+        // Инициализация
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const messagesRef = ref(db, 'messages');
 
         let currentUsername = "";
 
-        // Логіка входу
+        // Логика входа
         window.startChat = function() {
             const input = document.getElementById('username-input');
             if(input.value.trim() !== "") {
@@ -76,7 +76,7 @@
             }
         }
 
-        // Відправка повідомлення
+        // Отправка сообщения
         window.sendMessage = function() {
             const input = document.getElementById('msg-input');
             const text = input.value.trim();
@@ -94,7 +94,7 @@
             if(e.key === 'Enter') sendMessage();
         }
 
-        // Миттєвий прийом повідомлень
+        // Мгновенный прием сообщений
         onChildAdded(messagesRef, (snapshot) => {
             const data = snapshot.val();
             const box = document.getElementById('messages');
